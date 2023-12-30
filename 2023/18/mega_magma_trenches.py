@@ -86,40 +86,16 @@ letter_dir_dict = {
     "L": Dir.left
 }
 
-
-MAX_X = 0
-MAX_Y = 0
-
-with open("C:\\Users\\Nate\\Desktop\\Playdate\\advent-of-code\\2023\\18\\test.txt", "r") as file:
-
-    instructions = []
-    input = list(file)
-    for i in input:
-        i = i.rstrip("\n")
-        d, l, c = i.split(" ")
-        instruct = {}
-        c = c.replace("(", "").replace(")", "").replace("#", "")
-        l, d = c[:-1], c[-1]
-
-        d = int(d)
-        l = int(l, 16)
-        d = num_dir_dict[d]
-        #print(str(d) + ": " + str(l))
-        instruct["dir"] = d
-        instruct["len"] = int(l)
-        instructions.append(instruct)
-
-    
-    horizontal_max = 0
-    horizontal_min = 0
-    vertical_max = 0
-    vertical_min = 0
+def max_x_y(instructions):
 
     pos_h = 0
     pos_v = 0
 
-
-    #get max vertical and horizontal pos
+        
+    horizontal_max = 0
+    horizontal_min = 0
+    vertical_max = 0
+    vertical_min = 0
 
     for i in instructions:
         if i["dir"] == Dir.up:
@@ -143,26 +119,16 @@ with open("C:\\Users\\Nate\\Desktop\\Playdate\\advent-of-code\\2023\\18\\test.tx
 
 
 
-    MAX_X = 1 + horizontal_max - horizontal_min
-    MAX_Y = 1 + vertical_max - vertical_min
-
-    start_x = -horizontal_min
-    start_y = -vertical_min
-
-    print(start_x)
-    print(start_y)
-    #starting with start pos, get all corner positions
+    return (horizontal_max - horizontal_min, vertical_max - vertical_min, -horizontal_min, -vertical_min)
+    
+def get_corners(instructions, x, y):
+    pos_v = y
+    pos_h = x
+    corner_positions = []
+    corner_positions.append((x, y))
 
     pos_set_h = set()
     pos_set_v = set()
-
-    pos_v = start_y
-    pos_h = start_x
-
-
-    corner_positions = []
-    
-    corner_positions.append((start_x, start_y))
 
     for i in instructions:
 
@@ -178,26 +144,9 @@ with open("C:\\Users\\Nate\\Desktop\\Playdate\\advent-of-code\\2023\\18\\test.tx
         pos_set_h.add(pos_h)
         pos_set_v.add(pos_v)
         corner_positions.append((pos_h, pos_v))
+    return (corner_positions, pos_set_h, pos_set_v)
 
-    
-
-
-    print("printing corners")
-    for corner in corner_positions:
-        pass
-        print(corner)
-    print()
-
-    list_h = list(pos_set_h)
-    list_v = list(pos_set_v)
-
-    list_h.sort()
-    list_v.sort()
-
-    print(list_h)
-    print(list_v)
-
-
+def get_walls(corner_positions):
     wall_positions = []
     for i in range(len(corner_positions) - 1):
         
@@ -224,23 +173,15 @@ with open("C:\\Users\\Nate\\Desktop\\Playdate\\advent-of-code\\2023\\18\\test.tx
             pass
             for interval in intervals:
                 wall_positions.append(((int_h[0], interval[0]), (int_h[1], interval[1])))
+    
+    return wall_positions
 
-
-    print("printing walls")
-    for wall in wall_positions:
-        print(wall)
-        pass
-    print()
-    print(len(wall_positions))
-    print()
-
-
-    #create grid of cells
-
+def get_grid(list_h, list_v):
     the_grid = []
     h_set = set()
     v_set = set()
-
+    
+    sum = 0
     for v in range(len(list_v) - 1):
         the_grid.append([])
         for h in range(len(list_h) - 1):
@@ -260,41 +201,39 @@ with open("C:\\Users\\Nate\\Desktop\\Playdate\\advent-of-code\\2023\\18\\test.tx
             cell["v"] = 1+bottom - top
             v_set.add(1+bottom - top)
             cell["area"] = cell["h"] * cell["v"]
+            sum += cell["area"]
+            #print("(" + str(h) + "," + str(v) + "): " + str(cell["area"]))
             the_grid[v].append(cell)
+    #print(sum)
+    return (the_grid, h_set, v_set)
 
-    #grab each cell in row 1 and go through them until one has a top edge that is a wall, this is guarunteed to be an inside cell
-    
-    print("printing cell north walls")
+def get_start_cell(the_grid, wall_positions):
     for i in range(len(the_grid[0])):
         cell = the_grid[0][i]
         #print(cell[Dir.up])
         if cell[Dir.up]["coords"] in wall_positions:
-            print("found start cell")
+            #print("found start cell at " + str(cell["pos"]))
             the_grid[0][i]["zone"] = "Inside"
             start_x = i
             start_y = 0
             break
-    print()
+    return(start_x, start_y)
+
+def get_network(the_grid, start_x, start_y):
 
     visited_cells = set()
     active_cells = []
     active_cells.append((start_x, start_y))
-
-
     inside_cells = set()
-    walled_cells = set()
 
-    traversal_order = []
-
-    wall_positions = []
+    the_grid[start_y][start_x]["zone"] = "Inside"
 
     while True:
-        #get top cell from active cells
+    #get top cell from active cells
         if len(active_cells) == 0:
             break
 
         pos = active_cells.pop()
-        traversal_order.append(pos)
         inside_cells.add(pos)
         cell = the_grid[pos[1]][pos[0]]
         #add active cell to visited cells
@@ -309,30 +248,10 @@ with open("C:\\Users\\Nate\\Desktop\\Playdate\\advent-of-code\\2023\\18\\test.tx
                     active_cells.append(adj_pos)
                     cell[d]["traversed"] = True
                     the_grid[adj_pos[1]][adj_pos[0]]["zone"] = "Inside"
-            else:
-                walled_cells.add(cell[d]["coords"])
+    
+    return inside_cells
 
-    total = 0
-
-    print("walled cells:")
-    print(walled_cells)
-
-    for i in range(len(the_grid)):
-        line = ""
-        for j in range(len(the_grid[i])):
-            if (j,i) in  inside_cells:
-                line += "#"
-            else:
-                line += "."
-        print(line)
-
-    for pos in inside_cells:
-        cell = the_grid[pos[1]][pos[0]]
-        #print(cell)
-        #print()
-        total += cell["area"]
-
-    #find all connected edges
+def get_connections(the_grid, ):
     connected_edges = set()
     for i in range(len(the_grid)):
         for j in range(len(the_grid[i])):
@@ -358,26 +277,125 @@ with open("C:\\Users\\Nate\\Desktop\\Playdate\\advent-of-code\\2023\\18\\test.tx
                                 n2 = pos
                     
                         connected_edges.add((n1, n2))
+    return connected_edges
 
-    #go through all connected edges and remove double counts
+
+MAX_X = 0
+MAX_Y = 0
+
+with open("D:\\Code\\advent-of-code\\advent-of-code\\2023\\18\\input.txt", "r") as file:
+
+    instructions = []
+    input = list(file)
+    for i in input:
+        i = i.rstrip("\n")
+        d, l, c = i.split(" ")
+        instruct = {}
+        c = c.replace("(", "").replace(")", "").replace("#", "")
+        l, d = c[:-1], c[-1]
+
+        d = int(d)
+        l = int(l, 16)
+        d = num_dir_dict[d]
+        #print(str(d) + ": " + str(l))
+        instruct["dir"] = d
+        instruct["len"] = int(l)
+        instructions.append(instruct)
+    #get max vertical and horizontal pos
+    MAX_X, MAX_Y, start_x, start_y = max_x_y(instructions)
+    #print(start_x)
+    #print(start_y)
+    #starting with start pos, get all corner positions
+    pos_set_h = set()
+    pos_set_v = set()
+    pos_v = start_y
+    pos_h = start_x
+    #find all corners
+    corner_positions, pos_set_h, pos_set_v = get_corners(instructions,start_x,start_y)
+    list_h = list(pos_set_h)
+    list_v = list(pos_set_v)
+    list_h.sort()
+    list_v.sort()
+    print("horizontal positions: ")
+    print(list_h)
+    print("vertical positions: ")
+    print(list_v)
+    wall_positions = get_walls(corner_positions)
+
+    #comment this out to work properly
+    #wall_positions = []
+
     print()
-    c_edges = list(connected_edges)
+    print("number of walls: " + str(len(wall_positions)))
+    print()
+    #create grid of cells
+    print("generating grid")
+    the_grid, h_set, v_set = get_grid(list_h, list_v)
+    print("size of grid: " + str((len(h_set), len(v_set))))
+    #grab each cell in row 1 and go through them until one has a top edge that is a wall, this is guarunteed to be an inside cell
+    print("finding cell north wall")
+    
+    #flip the comments to work
+    start_x, start_y = get_start_cell(the_grid, wall_positions)
+    #start_x, start_y = (0,0)
+    print("starting traversal at: " + str((start_x, start_y)))
+    
+    print("traversing grid")
+    inside_cells = get_network(the_grid, start_x, start_y)
+    total = 0
+    #print("finding walled cells")
+    #debug
+    # for i in range(len(the_grid)):
+    #     line = ""
+    #     for j in range(len(the_grid[i])):
+    #         if (j,i) in  inside_cells:
+    #             line += "#"
+    #         else:
+    #             line += "."
+    # print(line)
+    print("calculating oversized area")
+    for pos in inside_cells:
+        cell = the_grid[pos[1]][pos[0]]
+        total += cell["area"]
+        #print(str(cell["pos"]) + ": " + str(cell["area"]))
+    print("total: " + str(total))
+    #find all connected edges
+    print("finding all edges")
+    #go through all connected edges and remove double counts
+    c_edges = list(get_connections(the_grid))
     c_edges.sort()
+    
+    print("removing duplicate wall counts")
     for con in c_edges:
-
-        print(con)
         pos = con[0]
         cell = the_grid[pos[1]][pos[0]]
-        total -= cell[h_v_from_edge(con)]
-
-    print(len(c_edges))
-    
-    print()
-    print(h_set)
-    print(v_set)
-    print()
+        orth = h_v_from_edge(con)
+        total -= cell[orth]
+        #print(str(con) + " - " + str(cell[orth]) + " = " + str(total))
+    print("total")
     print(total)
 
-    print(MAX_X * MAX_Y)            
-    print(952408144115)
-    print(total - 1407376496241)
+    print("re-adding overremoved corners")
+    double_corners = set()
+    used_c = []
+    for con in c_edges:
+        if con[0][0] == con[1][0]:
+            con2 = ((con[0][0]-1, con[0][1]),(con[1][0]-1, con[1][1]))
+        elif con[0][1] == con[1][1]:
+            con2 = ((con[0][0], con[0][1]-1),(con[1][0], con[1][1]-1))
+        if (con2 in used_c):
+            double_corners.add(con[1])
+        used_c.append(con)
+
+    corners = list(double_corners)
+    corners.sort()
+
+    for c in corners:
+        total += 1
+        #print(str(c) + " + 1 = " + str(total))
+    
+    print(total)
+
+
+    #print(h_set)
+    #print(v_set)
