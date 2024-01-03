@@ -148,7 +148,7 @@ for s in stable_bricks:
 for s in stable_bricks:
     safe_brick = True
     for a in s["above"]:
-        above_brick = stable_bricks[a]
+        above_brick = stable_brick_map[a]
         if len(above_brick["below"]) < 2:
             safe_brick = False
             break
