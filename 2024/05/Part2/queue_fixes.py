@@ -1,128 +1,131 @@
-import copy
-
-
-with open("C:\\Users\\perki\\Documents\\GitHub\\advent-of-code\\2024\\05\\Input\\input_test.txt", "r") as file:
+with open("C:\\Users\\perki\\Documents\\GitHub\\advent-of-code\\2024\\05\\Input\\input.txt", "r") as file:
     
     sum = 0
 
     lines = []
 
-    ordering = {}
-    reverse_ordering = {}
-    number_sizes = {}
-    reverse_number_sizes = {}
-    data = []
-    collect_ordering = True
+    input_rules = True
+    rules_ge = {}
+    rules_le = {}
+    updates = []
 
     for line in file:
         line = line.rstrip("\n")
-        if collect_ordering:
-            if line == "":
-                collect_ordering = False
-            else:
-                values = line.split("|")
-                if values[0] not in ordering:
-                    ordering[values[0]] = []
-                ordering[values[0]].append(values[1])
+        if line == "":
+            input_rules = False
+            continue
+        if input_rules:
+            rule = line.split("|")
+            page_pre = rule[0]
+            page_post = rule[1]
+            if page_pre not in rules_ge:
+                rules_ge[page_pre] = []
+            rules_ge[page_pre].append(page_post)
 
-                if values[1] not in reverse_ordering:
-                    reverse_ordering[values[1]] = []
-                reverse_ordering[values[1]].append(values[0])
-        
+            if page_post not in rules_le:
+                rules_le[page_post] = []
+            rules_le[page_post].append(page_pre)
         else:
-            data.append(line.split(","))
-
-    #sort the values into a list
-    order = copy.deepcopy(ordering)
-    print(list(order.keys()))
-    key = list(order.keys())[0]
-
-    print("ordering")
-    print(ordering)
-    print("reverse_ordering")
-    print(reverse_ordering)
-
-    sorted_values = []
-    value_indeces = {}
+            updates.append(line)
 
 
+    print("greater rules: ")
+    for valid_rule in rules_ge:
+        print(str(valid_rule) + ": " + str(rules_ge[valid_rule]))
 
-    
+    print("lesser rules: ")
+    for invalid_rule in rules_le:
+        print(str(invalid_rule) + ": " + str(rules_le[invalid_rule]))
 
-    while order:
-        break
-        
 
-        
-        if key not in order:
-            key = list(order.keys())[0]
+    update_id = 0
+    invalid_updates = {}
+    invalid_combos = {}
 
-        prev_key = key  
-        key = order[key].pop(0)
+    for update in updates:
         print()
-        print("-------------")
-        print("new key: " + str(key))
-        print("sorted values: " + str(sorted_values))
-        print("-------------")
+        is_valid_update = True
+        print("scanning update: " + str(update))
+        pages = update.split(",")
+        for i in range(len(pages)):
+            p1 = pages[i]
+            for j in range(i+1, len(pages)):
+                p2 = pages[j]
+                if p1 in rules_le and p2 in rules_le[p1]:
+                    print("page invalid with pairing: " + str(p1) + " " + str(p2))
+                    if update_id not in invalid_combos:
+                        invalid_combos[update_id] = []
+                    invalid_combos[update_id].append((p1, p2))
+                    is_valid_update = False
+        
+        if not is_valid_update:
+            print("update is valid")
+            invalid_updates[update_id] = update
+            update_id += 1
+    
+    print()
+
+    #now fix the invalid updates
+    for uid in invalid_updates:
+        update = invalid_updates[uid]
+
+        page_scoring = {}
+
+        #check every combo for rules on ordering and make greater and lesser subsets
+        print("fixing update: " + str(update))
+        
+        print("invalid combos:")
+        for mismatch in invalid_combos[uid]:
+            print(mismatch)
+        
+        pages = update.split(",")
+        subrules_g = {}
+        subrules_l = {}
+        for i in range(len(pages)):
+            p1 = pages[i]
+            
+            page_scoring[p1] = 0
+
+            for j in range(i+1, len(pages)):
+                p2 = pages[j]
+
+                if p1 in rules_ge and p2 in rules_ge[p1]:
+                    if p1 not in subrules_g:
+                        subrules_g[p1] = []
+                    subrules_g[p1].append(p2)
+                if p2 in rules_ge and p1 in rules_ge[p2]:
+                    if p2 not in subrules_g:
+                        subrules_g[p2] = []
+                    subrules_g[p2].append(p1)
+
+                if p2 in rules_le and p1 in rules_le[p2]:
+                    if p2 not in subrules_l:
+                        subrules_l[p2] = []
+                    subrules_l[p2].append(p1)
+                if p1 in rules_le and p2 in rules_le[p1]:
+                    if p1 not in subrules_l:
+                        subrules_l[p1] = []
+                    subrules_l[p1].append(p2)
+        
+        print("subrules greater: ")
+        for sr in subrules_g:
+            page_scoring[sr] -= len(subrules_g[sr])
+            print(str(sr) + ": " + str(subrules_g[sr]))
+        
+        print("subrules lesser: ")
+        for sr in subrules_l:
+            page_scoring[sr] += len(subrules_l[sr])
+            print(str(sr) + ": " + str(subrules_l[sr]))
+        
         print()
-        if len(order[prev_key]) == 0:
-            order.pop(prev_key, None)
 
-    for val in list(ordering.keys()):
-        if val not in sorted_values:
-            sorted_values.insert(0, val)
-            break
+        page_scoring = dict(sorted(page_scoring.items(), key=lambda item: item[1]))
+        print(page_scoring)
 
-
-    print(sorted_values)
-
-    sort_order = {}
-    for index in range(len(sorted_values)):
-        sort_order[sorted_values[index]] = index
-    
-    print(sort_order)
-    
-    valid_data_set = []
-    invalid_data_set = []
-    for d in data:
-        valid_data = True
-        #print("-------")
-        #print(d)
-        for i in range(len(d)):
-            for j in range(i+1, len(d)):
-                if d[i] not in ordering or d[j] not in ordering[d[i]]:
-                    valid_data = False
-                    break
-        if valid_data:
-            #print("Appending")
-            valid_data_set.append(d)
-        else:
-            invalid_data_set.append(d)
-
-
-    #now fix the ordering of the incorrect data lists
-    for d in valid_data_set:
-        #print("---------")
-        #print(d)
-        d.sort(key=lambda val: sort_order[val])
-        #print(d)
-
-    for d in invalid_data_set:
-        d_temp = copy.copy(d)
-        d_temp.sort(key=lambda val: sort_order[val])
-
-              
-
-    
-
-
-
-    for d in invalid_data_set:
-        sum += int(d[int(len(d)/2)])
+        corrected_update = []
+        for key in page_scoring:
+            corrected_update.append(key)
+        
+        sum += int(corrected_update[(int(len(corrected_update)/2))])
 
     print(sum)
-        
-
-
-
-                
