@@ -53,7 +53,7 @@ class Plot:
     plant = None
     pos = None
 
-with open("C:\\Users\\perki\\Documents\\GitHub\\advent-of-code\\2024\\12\\Input\\input.txt", "r") as file:
+with open("C:\\Users\\perki\\Documents\\GitHub\\advent-of-code\\2024\\12\\Input\\input_test.txt", "r") as file:
     lines = []
     for line in file:
         line = line.rstrip("\n")
@@ -104,15 +104,22 @@ with open("C:\\Users\\perki\\Documents\\GitHub\\advent-of-code\\2024\\12\\Input\
     sum = 0
     for key in region_dict:
         region = region_dict[key]
-        area = len(region)
-        perimeter = 0
+
+        pos_list1 = []
+        pos_list2 = []
         for pos in region:
             plot = pos_plot_dict[pos]
-            for d in Dir:
-                if plot.adjacencies[d] == None:
-                    perimeter += 1
+            for d, p in plot.adjacencies.items():
+                if p is None:
+                    adj_pos = add(pos, movement[d])
+                    pos_list1.append(adj_pos)
+                    pos_list2.append((adj_pos[1], adj_pos[0]))
+        print()
+        print(id_letter_dict[key] + str(key))
+        pos_list1.sort()
+        pos_list2.sort()
+        print(pos_list1)
+        print(pos_list2)
 
-        sum += (area * perimeter)
 
     print(sum)
-    
