@@ -7,7 +7,12 @@ class Machine:
     prize: tuple
 
 
-with open("C:\\Users\\perki\\Documents\\GitHub\\advent-of-code\\2024\\13\\Input\\input.txt", "r") as file:
+def cost(pair):
+    cost_a = 3
+    cost_b = 1
+    return (cost_a * pair[0]) + (cost_b * pair[1])
+
+with open("C:\\Users\\perki\\Documents\\GitHub\\advent-of-code\\2024\\13\\Input\\input_test.txt", "r") as file:
     #print("open")
     count = 0
     machine_id = 0
@@ -54,68 +59,72 @@ with open("C:\\Users\\perki\\Documents\\GitHub\\advent-of-code\\2024\\13\\Input\
 
         count += 1
 
-    cost_a = 3
-    cost_b = 1
 
     for machine in machines.values():
         #find if there is a possible combination of values to produce prize's x
+        #get the lowest and highest value of c1 that produces the correct sum
         print()
-        print("finding x coefficients of machine ")
         print(str(machine))
-        x1 = machine.a[0]
-        x2 = machine.b[0]
-        xf = machine.prize[0]
-        
-        c1 = -1
-        coefficient_jump = 1
-
-        coefficients_x = []
-        count = 0
-        while c1 * x1 <= xf:
-            count += 1
-            c1 += coefficient_jump
-            #check if the sum of c1*x1 and c2*x2 = xf
-            t1 = c1 * x1
-            if count % 1000000 == 0:
-                print(str(t1/xf) + "% -- " + str(t1) + " / " + str(xf))
-            if t1 == xf:
-                coefficients_x.append((c1, 0))
-                continue
-            elif t1 < xf:
-                #get t2
-                t2 = xf - t1
-                if t2 % x2 == 0:
-                    c2 = int(t2 / x2)
-                    coefficients_x.append((c1, c2))
-                else:
-                    continue
-            if coefficient_jump == 1 and len(coefficients_x) == 2:
-                coefficient_jump = coefficients_x[1][0] - coefficients_x[0][0]
-                coefficient_jump **= 2
-        
-        coefficients = []
-
-        print("x coefficients found")
-        #print(coefficients_x)
-
-        for cx in coefficients_x:
-            if ((cx[0] * machine.a[1]) + (cx[1] * machine.b[1])) == machine.prize[1]:
-                coefficients.append((cx[0], cx[1]))
-        
-        #print("matching coefficients: ")
-        #print(str(coefficients))
-        
-        min_cost = None
-        for c in coefficients:
-            tokens = (cost_a * c[0]) + (cost_b * c[1])
-            if min_cost is None or tokens < min_cost:
-                #print("new least cost: ")
-                #print(str(c) + " at price of " + str(tokens))
-                min_cost = tokens
-        
-        if min_cost is not None:
-            sum += min_cost
-    
-    print(sum)
-
+        ci = None
+        c1 = 0
+        while ci is None:
+            t1 = c1 * machine.a[0]
+            tf = machine.prize[0]
+            t2 = tf - t1
             
+            if t2 % machine.b[0] == 0:
+                c2 = int(t2 / machine.b[0])
+                ci = (c1, c2)
+                break
+
+            c1 += 1
+        
+
+        ci2 = None
+        c1 = ci[0]
+        while ci2 is None:
+            c1 += 1
+
+            t1 = c1 * machine.a[0]
+            tf = machine.prize[0]
+            t2 = tf - t1
+            
+            if t2 % machine.b[0] == 0:
+                c2 = int(t2 / machine.b[0])
+                ci2 = (c1, c2)
+                break
+
+        c_jump = (ci2[0] - ci[0], ci2[1] - ci[1])
+
+
+        cf = None
+        c1 = int(machine.prize[0] / machine.a[0]) + 1
+        
+        while cf is None:
+
+            t1 = c1 * machine.a[0]
+            tf = machine.prize[0]
+            t2 = tf - t1
+            
+            if t2 >= 0 and t2 % machine.b[0] == 0:
+                c2 = int(t2 / machine.b[0])
+                cf = (c1, c2)
+                break
+
+            c1 -= 1
+
+        print(ci)
+        print(ci2)
+        print(c_jump)
+        print(cf)
+
+        costs = {}
+
+        costs[ci] = cost(ci)
+        costs[ci2] = cost(ci2)
+        costs[cf] = cost(cf)
+
+        print(costs)
+
+        #we now have the end points and the interval distance
+        #we can binary search and be greedy

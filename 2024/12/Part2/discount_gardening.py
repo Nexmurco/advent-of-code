@@ -103,6 +103,7 @@ with open("C:\\Users\\perki\\Documents\\GitHub\\advent-of-code\\2024\\12\\Input\
 
     sum = 0
     for key in region_dict:
+        #for each region, construct a secondary grid of 
         region = region_dict[key]
 
         pos_list1 = []
@@ -120,6 +121,13 @@ with open("C:\\Users\\perki\\Documents\\GitHub\\advent-of-code\\2024\\12\\Input\
         pos_list2.sort()
         print(pos_list1)
         print(pos_list2)
+
+        sides = 0
+        
+        prev = pos_list1[0]
+        for i in range(1, len(pos_list1)):
+            curr = pos_list1[i]
+            if
 
 
     print(sum)
