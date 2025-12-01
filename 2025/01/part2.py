@@ -2,7 +2,7 @@ import sys
 input_file = sys.argv[1]
 
 pos = 50
-prev_pos = 50
+prev_pos = pos
 count = 0
 
 with open(input_file, "r") as input:
