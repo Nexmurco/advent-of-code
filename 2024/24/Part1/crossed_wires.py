@@ -1,13 +1,13 @@
-def operate(i1, i2, operation):
-    if operation == "XOR":
+def operate(i1, i2, o):
+    if o == "XOR":
         return i1 ^ i2
-    if operation == "AND":
+    if o == "AND":
         return i1 and i2
-    if operation == "OR":
+    if o == "OR":
         return i1 or i2
     return None
 
-with open("C:\\Users\\perki\\Documents\\GitHub\\advent-of-code\\2024\\24\\Input\\input.txt", "r") as file:
+with open("C:\\Users\\perki\\Documents\\GitHub\\advent-of-code\\2024\\24\\Input\\input_test.txt", "r") as file:
     is_init = True
     bin_map = {}
     operation_map = {}
@@ -28,9 +28,11 @@ with open("C:\\Users\\perki\\Documents\\GitHub\\advent-of-code\\2024\\24\\Input\
                 split = line.split(": ")
                 bin_map[split[0]] = int(split[1])
                 resolved_inputs.add(split[0])
+
         else:
             split = line.split(" -> ")
             op_params = split[0].split(" ")
+
             operation_map[(op_params[0], op_params[2])] = op_params[1]
             gate_map[(op_params[0], op_params[2])] = split[1]
             reverse_gate_map[split[1]] = (op_params[0], op_params[2])
@@ -50,16 +52,22 @@ with open("C:\\Users\\perki\\Documents\\GitHub\\advent-of-code\\2024\\24\\Input\
 
     print("resolved inputs")
     print(resolved_inputs)
-    print()
+    for resolved in resolved_inputs:
+        print(str(resolved) + ": " + str(bin_map[resolved]))
 
     while len(unresolved_inputs) > 0:
         for unresolved_input in unresolved_inputs:
 
             il, ir = reverse_gate_map[unresolved_input]
             if il in resolved_inputs and ir in resolved_inputs:
-
                 operation = operation_map[(il, ir)]
                 output = operate(bin_map[il], bin_map[ir], operation)
+
+
+                print("resolving input " + str(unresolved_input) + " to " + str(output))
+                print("with inputs (" + str(il) + ": " + str(bin_map[il]) + "), (" + str(ir) + ": " + str(bin_map[ir])  + ")")
+                print("with operation " + str(operation))
+                print()
                 
                 bin_map[unresolved_input] = output
 
@@ -70,6 +78,9 @@ with open("C:\\Users\\perki\\Documents\\GitHub\\advent-of-code\\2024\\24\\Input\
     input_list = list(resolved_inputs)
     input_list.sort()
     input_list.reverse()
+
+    print("inputs: ")
+    print(input_list)
     
 
     value = ""
