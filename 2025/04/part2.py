@@ -71,6 +71,7 @@ while(continue_removal):
     sum += iteration_sum
     if iteration_sum == 0:
         continue_removal = False
+    #sanity check, no infinite loops please
     if iteration == 10000:
         continue_removal = False
 
