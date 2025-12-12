@@ -1,6 +1,8 @@
 import sys
 input_file = sys.argv[1]    
 
+
+
 class Coordinate:
     def __init__(self, x, y, z):
         self.x = x
@@ -16,6 +18,10 @@ class Coordinate:
         elif self.y == other.y and self.z < other.z:
             return True 
         return False
+    def __hash__(self):
+        return int(str(self.x) + str(self.y) + str(self.z))
+    def __str__(self):
+        return "[" + str(self.x) + "," + str(self.y) + "," + str(self.z) + "]"
     def get_coordinates(self):
         return(self.x, self.y, self.z)
 
@@ -35,6 +41,188 @@ class CoordinatePair:
         c1 = self.coordinates[0]
         c2 = self.coordinates[1]
         return int(str(c1.x)+str(c1.y)+str(c1.z)+str(c2.x)+str(c2.y)+str(c2.z))
+    
+    def __str__(self):
+        c1 = self.coordinates[0]
+        c2 = self.coordinates[1]
+        return str(c1) + "<->" + str(c2)
+    
+    def get_linear_distance(self, dimension):
+        c1 = self.coordinates[0]
+        c2 = self.coordinates[1]
+        return abs(getattr(c1, dimension) - getattr(c2, dimension))
+
+class SortedCoordinateList:
+    def __init__(self, coordinate_list, dimension):
+        self.dimension = dimension
+        self.coordinate_list = coordinate_list
+        self.coord_to_index_map = {}
+    def __init__(self, dimension):
+        self.dimension = dimension
+        self.coordinate_list = []
+        self.coord_to_index_map = {}
+
+    def get_coord_at(self, index):
+        return self.coordinate_list[index]
+
+    def get_coordinate_index(self, coord):
+        return self.coord_to_index_map[coord]
+
+    def _update_index_map(self):
+        self.coord_to_index_map = {}
+        for i in range(len(self.coordinate_list)):
+            self.coord_to_index_map[self.coordinate_list[i]] = i
+
+    def print_list(self):
+        for coord in self.coordinate_list:
+            print(coord)
+
+    def print_map(self):
+        for key in self.coord_to_index_map:
+            print(str(key) + ": " + str(self.coord_to_index_map[key]))
+
+    def print_dimension(self):
+        print("dimension: " + self.dimension)
+
+        
+
+    def add_coordinate(self, coord):
+        if coord in self.coord_to_index_map:
+            return
+        
+        last_index = 0
+        append_coord = True
+        for index in range(len(self.coordinate_list)):
+            if getattr(coord, self.dimension) < getattr(self.coordinate_list[index], self.dimension):
+                append_coord = False
+                break
+            last_index += 1
+        
+        if append_coord:
+            self.coordinate_list.append(coord)
+            last_index = len(self.coordinate_list) - 1
+        else:
+            self.coordinate_list[last_index:last_index] = [coord]
+
+        self._update_index_map()
+        
+        
+class SearchData:
+    def __init__(self):
+        self.excluded_pairs = None
+        self.sorted_list = None
+        self.minimum_pair = None
+        self.starting_index = -1
+        self.direction = 0
+        
+        self.coordinate_pair = None
+
+        self.index_offset = None
+        self.continue_search = True
+
+    def set_self_pair(self):
+        if not self.check_out_of_bounds():
+            self.coordinate_pair = None
+            return self.coordinate_pair
+        
+        index = self.starting_index + (self.index_offset * self.direction)
+        start_coord = self.sorted_list.get_coord_at(self.starting_index)
+        offset_coord = self.sorted_list.get_coord_at(index)
+        self.coordinate_pair = CoordinatePair(start_coord, offset_coord)
+
+        #check for exclusions
+        if check_if_pair_is_in(self.excluded_pairs, self.coordinate_pair):
+            self.coordinate_pair = None
+
+        return self.coordinate_pair
+    
+    def set_minimum_pair(self, min_pair):
+        self.minimum_pair = min_pair
+        self.check_minimum_upper_bound()
+
+    def check_minimum_upper_bound(self):
+        if self.set_self_pair() is None:
+            self.continue_search = False
+            return self.continue_search
+
+        if(self.minimum_pair is not None and self.coordinate_pair.get_linear_distance(self.sorted_list.dimension) >= self.minimum_pair.distance):
+            self.continue_search = False
+        else:
+            self.continue_search = True
+
+        return self.continue_search
+    
+    def compare_minimum_distance(self):
+        if not self.check_out_of_bounds():
+            return self.minimum_pair
+        elif not self.check_minimum_upper_bound():
+            return self.minimum_pair
+        elif self.minimum_pair is None or self.coordinate_pair.distance < self.minimum_pair.distance:
+            self.minimum_pair = self.coordinate_pair
+        
+        return self.minimum_pair
+
+    
+    def set_search_offset(self, index_offset):
+        self.index_offset = index_offset
+        self.check_out_of_bounds()
+        if self.continue_search:
+            self.check_minimum_upper_bound()
+
+    def check_out_of_bounds(self):
+        index = self.starting_index + (self.index_offset * self.direction)
+        if (index < 0 or index >= len(self.sorted_list.coordinate_list)):
+            self.continue_search = False
+        else:
+            self.continue_search = True
+
+        return self.continue_search
+
+
+class MultiCoordinateList:
+    def __init__(self):
+        self.lists = []
+
+    def add_coordinate_list(self, c_list):
+        self.lists.append(c_list)
+
+    def add_coordinate(self, coord):
+        for l in self.lists:
+            l.add_coordinate(coord)
+
+    def get_closest_pair_with(self, coord, min_pair, excluded_pairs):
+        searches = []
+        for l in self.lists:
+            for direction in {1, -1}:
+                search_data = SearchData()
+                search_data.sorted_list = l
+                search_data.direction = direction
+                search_data.index_offset = 1
+                search_data.minimum_pair = min_pair
+                search_data.starting_index = l.get_coordinate_index(coord)
+                search_data.excluded_pairs = excluded_pairs
+                searches.append(search_data)
+
+        any_search_continue = True
+        search_offset = 0
+        new_min_pair = min_pair
+        check_count = 1
+        while any_search_continue and check_count < 10000:
+            search_offset += 1
+            any_search_continue = False
+            for search in searches:
+                #update search with latest info
+                search.set_minimum_pair(new_min_pair)
+                if not search.continue_search:
+                    continue
+                search.set_search_offset(search_offset)
+                if not search.continue_search:
+                    continue
+                new_min_pair = search.compare_minimum_distance()
+                any_search_continue = search.continue_search
+            check_count += 1
+        return new_min_pair
+            
 
 def check_if_pair_is_in(container, pair):
     for c in container:
@@ -42,143 +230,32 @@ def check_if_pair_is_in(container, pair):
             return True
     return False
 
-def euclidean_dist(coord_tuple):
-    return euclidean_dist(coord_tuple[0], coord_tuple[1])
-
 def euclidean_dist(coord1, coord2):
     return ((coord1.x - coord2.x)**2) + ((coord1.y - coord2.y)**2) + ((coord1.z - coord2.z)**2)
 
-def terminate_search_y(min_pair, coord_list, base_coord, base_index, offset):
-    new_index = base_index + offset
-    if new_index < 0 or new_index >= len(coord_list):
-        return True
-    new_coord = coord_list[new_index]
-    y_dist = abs(base_coord.y - new_coord.y)
-
-    if min_pair is not None and min_pair.distance > y_dist:
-        return True
-
-def terminate_search_z(min_pair, coord_list, base_coord, base_index, offset):
-    new_index = base_index + offset
-    if new_index < 0 or new_index >= len(coord_list):
-        return True
-    new_coord = coord_list[new_index]
-    z_dist = abs(base_coord.z - new_coord.z)
-
-    if min_pair is not None and min_pair.distance > z_dist:
-        return True
-
-def get_min_pair(min_pair, coord_list, base_coord, base_index, offset, exceptions):
-
-    new_index = base_index + offset
-    new_coord = coord_list[new_index]
-    dist = euclidean_dist(base_coord, new_coord)
-    
-    new_pair = CoordinatePair(base_coord, new_coord)
-    
-    if check_if_pair_is_in(exceptions, new_pair):
-        return min_pair
-    
-    print("Comparing:")
-    print(str(new_coord.get_coordinates()) + "<->" + str(base_coord.get_coordinates()) + ": " + str(dist))
-    
-    exceptions.add(new_pair)
-
-    if min_pair is None or dist < min_pair.distance:
-        return new_pair
-    
-    return min_pair
-    
-
-def insert_into_sorted_y(s_list, new_value):
-    last_index = 0
-    append_coord = True
-    for index in range(len(s_list)):
-        if new_value.y < s_list[index].y:
-            append_coord = False
-            break
-        last_index += 1
-    
-    if append_coord:
-        s_list.append(new_value)
-        last_index = len(s_list) - 1
-    else:
-        s_list[last_index:last_index] = [new_value]
-    
-    return last_index
-
-def insert_into_sorted_z(s_list, new_value):
-    last_index = 0
-    append_coord = True
-    for index in range(len(s_list)):
-        if new_value.z < s_list[index].z:
-            append_coord = False
-            break
-        last_index += 1
-    
-    if append_coord:
-        s_list.append(new_value)
-        last_index = len(s_list) - 1
-    else:
-        s_list[last_index:last_index] = [new_value]
-    
-    return last_index
-
 
 def get_closest_pair(coords, exception_pairs):
-    sorted_y = []
-    sorted_z = []
-    smallest_pair = None
+    multiList = MultiCoordinateList()
+    multiList.add_coordinate_list(SortedCoordinateList('y'))
+    multiList.add_coordinate_list(SortedCoordinateList('z'))
+
+    closest = None
     checked_pairs = set()
 
     for pair in exception_pairs:
         checked_pairs.add(pair)
 
-    for coord in coords:
-        #add value into sorted y
-        print("new coord: " + str(coord.get_coordinates()))
-        inserted_y = insert_into_sorted_y(sorted_y, coord)
-        inserted_z = insert_into_sorted_z(sorted_z, coord)
-
-        #go up and down the lists while the y-distance and z-distance is smaller than smallest_distance
-        #updating smallest distance with best found value
-        y_ascend = True
-        y_descend = True
-        z_ascend = True
-        z_descend = True
-
-        index_jump = 1
-
-
-        while y_ascend or y_descend or z_ascend or z_descend:
-
-            y_descend = not terminate_search_y(smallest_pair, sorted_y, coord, inserted_y, -index_jump)
-            y_ascend = not terminate_search_y(smallest_pair, sorted_y, coord, inserted_y, index_jump)
-            z_descend = not terminate_search_z(smallest_pair, sorted_z, coord, inserted_y, -index_jump)
-            z_ascend = not terminate_search_z(smallest_pair, sorted_z, coord, inserted_y, index_jump)
-
-            if y_descend:
-                smallest_pair = get_min_pair(smallest_pair, sorted_y, coord, inserted_y, -index_jump, checked_pairs)
-            if y_ascend:
-                smallest_pair = get_min_pair(smallest_pair, sorted_y, coord, inserted_y, index_jump, checked_pairs)
-            if z_descend:
-                smallest_pair = get_min_pair(smallest_pair, sorted_z, coord, inserted_z, -index_jump, checked_pairs)
-            if z_ascend:
-                smallest_pair = get_min_pair(smallest_pair, sorted_z, coord, inserted_z, index_jump, checked_pairs)
-            
-            index_jump += 1
-
-        print("Smallest Pair Found:")
-        if smallest_pair is not None:
-            print(str(smallest_pair.coordinates[0].get_coordinates()) + "<->" + str(smallest_pair.coordinates[1].get_coordinates()) + ": " + str(smallest_pair.distance))
-        else:
-            print(smallest_pair)
-        print()
-    
-    return smallest_pair
+    for coord in coords.coordinate_list:
+        multiList.add_coordinate(coord)
+        closest = multiList.get_closest_pair_with(coord, closest, checked_pairs)
+    return closest
             
 
-coordinates = []
+def find_circuits(coordinate_pairs, coordinate_id_map):
+    pass
+
+
+x_sorted_list = SortedCoordinateList('x')
 #take puzzle input and sort on y
 line_count = 0
 with open(input_file, "r") as inputs:
@@ -187,10 +264,31 @@ with open(input_file, "r") as inputs:
         line = input.rstrip()
         values = line.split(",")
         coord = Coordinate(int(values[0]), int(values[1]), int(values[2]))
-        coordinates.append(coord)
+        x_sorted_list.add_coordinate(coord)
 
 
-coordinates.sort()
-for c in coordinates:
-    print(c.x, c.y, c.z)
-get_closest_pair(coordinates, set())
+#next figure out maintaining circuits and detecting if adding changes anything
+
+#also it appears that my shortest distance is wrong for #4
+
+x_sorted_list.print_dimension()
+x_sorted_list.print_list()
+print('Data Loaded\n')
+pairs = set()
+circuits = {}
+for i in range(10):
+    new_pair = get_closest_pair(x_sorted_list, pairs)
+    print(new_pair)
+    pairs.add(new_pair)
+
+print()
+x_sorted_list.print_map()
+id_map = x_sorted_list.coord_to_index_map
+
+id_pairs = {}
+for pair in pairs:
+    c1 = pair.coordinates[0]
+    c2 = pair.coordinates[1]
+    id_pairs[id_map[c1]] = id_map[c2]
+
+print(id_pairs)
